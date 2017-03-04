@@ -28,7 +28,6 @@ class vpn(object):
         #Getting list of all instances
         reservations = self.ec2conn.get_all_instances()
 
-
         #This for loop ultimately determines the vm that is the vpn vm.
         for res in reservations:
             for inst in res.instances:
@@ -57,10 +56,17 @@ class vpn(object):
 
         return ipList[-1]
 
+    def disassociateAddress(self):
+        '''This method will disassociate the public ip address assocaited with the vm.'''
+        pass
+
     def allocateNewAddress(self):
         '''This function allocates a new public ip address. This address will be used by the new openswan vm.'''
         elasticIP = self.ec2conn.allocate_address()
         return elasticIP
+
+    def changeOpenSwanConfiguration(self):
+        '''This method will change'''
 
 if __name__ == "__main__":
     #Creating new vpn object.
@@ -72,7 +78,7 @@ if __name__ == "__main__":
     #Getting old endpoint currently configured in mac os
     oldEndpoint = vpnObj.getOldEndpoint()
 
-    #Getting new public address
+    #Getting public ip address associated with with vpn vm.
     publicIPAddress = vpnInstance.ip_address
 
     #New public ip address
