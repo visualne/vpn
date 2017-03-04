@@ -15,7 +15,6 @@ import ConfigParser
 class vpn(object):
 
     def __init__(self):
-        #
         #Grabbing credentials
         config = ConfigParser.ConfigParser()
         config.read('credentials.txt')
