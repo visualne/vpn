@@ -15,7 +15,7 @@ import ConfigParser
 class vpn(object):
 
     def __init__(self):
-
+        #
         #Grabbing credentials
         config = ConfigParser.ConfigParser()
         config.read('credentials.txt')
@@ -62,7 +62,6 @@ class vpn(object):
         '''This function allocates a new public ip address. This address will be used by the new openswan vm.'''
         elasticIP = self.ec2conn.allocate_address()
         return elasticIP
-
 
 if __name__ == "__main__":
     #Creating new vpn object.
