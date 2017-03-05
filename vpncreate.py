@@ -63,13 +63,27 @@ class vpn(object):
         # Getting vpn instance
         vpnInstance = self.getVPNInstance()
 
-        #Disassociate public ip address
-        print self.ec2conn.disassociate_address(vpnInstance.ip_address)
+        #Getting allocation id of current public ip address
+        for addr in self.ec2conn.get_all_addresses():
+            if addr.public_ip == vpnInstance.ip_address:
+                #Disassocating address from VM
+                self.ec2conn.disassociate_address(vpnInstance.ip_address)
 
-    def allocateNewAddress(self):
-        '''This function allocates a new public ip address. This address will be used by the new openswan vm.'''
-        elasticIP = self.ec2conn.allocate_address()
-        return elasticIP
+                #Releasing public IP address
+                self.ec2conn.release_address(allocation_id=addr.allocation_id)
+
+
+    def associateNewAddress(self):
+        '''This function associates a new elastic ip address with an instance.'''
+        #Getting vpn instance id
+        vpnInstance = self.getVPNInstance()
+
+        vpnInstanceID = vpnInstance.id
+
+        newElasticIP = self.ec2conn.allocate_address()
+
+        #Associating public ip address with ec2 instance
+        self.ec2conn.associate_address(vpnInstanceID,newElasticIP.public_ip)
 
     def changeOpenSwanConfiguration(self):
         '''This method will change'''
@@ -78,24 +92,21 @@ if __name__ == "__main__":
     #Creating new vpn object.
     vpnObj = vpn()
 
-    # #Getting vpn instance
-    # vpnInstance = vpnObj.getVPNInstance()
-    #
-    # #Getting old endpoint currently configured in mac os
-    # oldEndpoint = vpnObj.getOldEndpoint()
-    #
-    # # Getting public ip address associated with with vpn vm.
-    # publicIPAddress = vpnInstance.ip_address
-    #
-    # #New public ip address
-    # newPublicIP = vpnObj.allocateNewAddress()
+    #Disassociating the public ip address associated with an instance.
+    vpnObj.disassociateAddress()
+
+    #Allocating new ip address to instance
+    vpnObj.associateNewAddress()
+
+
+
     #
     # print 'OldEndpoint in preferences.plist file: ' + oldEndpoint
     # print 'Current Public IP Address associated with VM: ' + publicIPAddress
     # print 'New public IP address: ' + str(newPublicIP)
 
-    print 'Unassociating public ip address'
-    vpnObj.disassociateAddress()
+    # print 'Unassociating public ip address'
+    # vpnObj.disassociateAddress()
 
     #Changing public ip address that the vpn is connecting to
     # os.system('sed -i -e \'s/' + oldEndpointAddress + '/' + publicIPAddress + '/g\' /Library/Preferences/SystemConfiguration/preferences.plist')
