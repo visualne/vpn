@@ -24,6 +24,7 @@ class vpn(object):
         #Logic here to change public ip address#
         self.ec2conn = ec2.connection.EC2Connection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 
+
     def getVPNInstance(self):
         #Getting list of all instances
         reservations = self.ec2conn.get_all_instances()
@@ -58,7 +59,12 @@ class vpn(object):
 
     def disassociateAddress(self):
         '''This method will disassociate the public ip address assocaited with the vm.'''
-        pass
+
+        # Getting vpn instance
+        vpnInstance = self.getVPNInstance()
+
+        #Disassociate public ip address
+        print self.ec2conn.disassociate_address(vpnInstance.ip_address)
 
     def allocateNewAddress(self):
         '''This function allocates a new public ip address. This address will be used by the new openswan vm.'''
@@ -72,21 +78,24 @@ if __name__ == "__main__":
     #Creating new vpn object.
     vpnObj = vpn()
 
-    #Getting vpn instance
-    vpnInstance = vpnObj.getVPNInstance()
+    # #Getting vpn instance
+    # vpnInstance = vpnObj.getVPNInstance()
+    #
+    # #Getting old endpoint currently configured in mac os
+    # oldEndpoint = vpnObj.getOldEndpoint()
+    #
+    # # Getting public ip address associated with with vpn vm.
+    # publicIPAddress = vpnInstance.ip_address
+    #
+    # #New public ip address
+    # newPublicIP = vpnObj.allocateNewAddress()
+    #
+    # print 'OldEndpoint in preferences.plist file: ' + oldEndpoint
+    # print 'Current Public IP Address associated with VM: ' + publicIPAddress
+    # print 'New public IP address: ' + str(newPublicIP)
 
-    #Getting old endpoint currently configured in mac os
-    oldEndpoint = vpnObj.getOldEndpoint()
-
-    #Getting public ip address associated with with vpn vm.
-    publicIPAddress = vpnInstance.ip_address
-
-    #New public ip address
-    newPublicIP = vpnObj.allocateNewAddress()
-
-    print 'OldEndpoint in preferences.plist file: ' + oldEndpoint
-    print 'Current Public IP Address associated with VM: ' + publicIPAddress
-    print 'New public IP address: ' + str(newPublicIP)
+    print 'Unassociating public ip address'
+    vpnObj.disassociateAddress()
 
     #Changing public ip address that the vpn is connecting to
     # os.system('sed -i -e \'s/' + oldEndpointAddress + '/' + publicIPAddress + '/g\' /Library/Preferences/SystemConfiguration/preferences.plist')
