@@ -11,21 +11,20 @@ from ansible import utils
 import json
 
 
+#Problem UDP port 500 not listening after openswan restart for some reason. Need to look into this more.
+
 #Need to allocate elastic IP address. - Done
 #Once address is allocated, go into the vm that is spun up and change the configuration in openswan
 #to accomodate the new elastic ip address.
 #Unassociate address - Done
 #Associate new address - Done
-#Go into vm, restart the openswan service.
+#Go into vm, restart the openswan service. - Done
 
 class vpnVMInteraction(object):
 
-    def __init__(self):
-        #Setting up the old and new public ip addresses that will be used a vpn endpoint.
-        self.oldIP = '34.206.115.14'
-        self.newIP = '5.5.5.5'
-
-        self.hosts = [self.oldIP]
+    def __init__(self,oldIPAddress):
+        #Setting the ansible inventory ip to be the old elastic ip address of the vm.
+        self.hosts = [oldIPAddress]
         self.vpn_vm = ansible.inventory.Inventory(self.hosts)
 
 
@@ -59,6 +58,11 @@ class vpn(object):
         #Logic here to change public ip address#
         self.ec2conn = ec2.connection.EC2Connection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 
+        #Getting vpn instance object
+        self.vpnInstance = self.getVPNInstance()
+
+        #Allocating new public ip address
+        self.newElasticIP = self.ec2conn.allocate_address()
 
     def getVPNInstance(self):
         #Getting list of all instances
@@ -107,52 +111,46 @@ class vpn(object):
                 #Releasing public IP address
                 self.ec2conn.release_address(allocation_id=addr.allocation_id)
 
-
     def associateNewAddress(self):
         '''This function associates a new elastic ip address with an instance.'''
-        #Getting vpn instance id
-        vpnInstance = self.getVPNInstance()
-
-        vpnInstanceID = vpnInstance.id
-
-        newElasticIP = self.ec2conn.allocate_address()
 
         #Associating public ip address with ec2 instance
-        self.ec2conn.associate_address(vpnInstanceID,newElasticIP.public_ip)
+        self.ec2conn.associate_address(self.vpnInstance.id,self.newElasticIP.public_ip)
 
-    def changeOpenSwanConfiguration(self):
-        '''This method will change'''
 
 if __name__ == "__main__":
-    newVpnObj = vpnVMInteraction()
-    newVpnObj.runCommand('sed -i \'s/^  leftid=.*/  leftid=10.10.10.10/g\' /etc/ipsec.conf')
-    newVpnObj.runCommand('sed -i -e \'s/1.1.1.1\\b/3.3.3.3/g\' /etc/ipsec.secrets')
 
+    #Getting vpn object
+    vpnObj = vpn()
 
+    #Setting up old ip address
+    oldIPAddress = vpnObj.vpnInstance.ip_address
 
-    #Creating new vpn object.
-    # vpnObj = vpn()
-    #
+    #Get new elastic ip address object
+    newIPAddress = vpnObj.newElasticIP
+
+    print 'New IP Address: ' + newIPAddress.public_ip
+    print 'Old IP Address: ' + oldIPAddress
+
+    #Sed command to replace public ip in ipsec.conf
+    print 'sed -i \'s/^  leftid=.*/  leftid=%s/g\' /etc/ipsec.conf' %newIPAddress.public_ip
+
+    #Sed command to replace public ip in /etc/ipsec.secrets
+    print 'sed -i -e \'s/%s\\b/%s/g\' /etc/ipsec.secrets' % (newIPAddress.public_ip,oldIPAddress)
+
+    newVpnObj = vpnVMInteraction(oldIPAddress)
+
+    #Replacing old public ip address in /etc/ipsec.conf
+    newVpnObj.runCommand('sed -i \'s/^  leftid=.*/  leftid=%s/g\' /etc/ipsec.conf' %newIPAddress.public_ip)
+
+    #replacing old ip adddress with new ip address in /etc/ipsec.secrets
+    newVpnObj.runCommand('sed -i -e \'s/%s\\b/%s/g\' /etc/ipsec.secrets' % (oldIPAddress,newIPAddress.public_ip))
+
+    #restarting openswan
+    newVpnObj.runCommand('service ipsec restart')
+
     # #Disassociating the public ip address associated with an instance.
-    # vpnObj.disassociateAddress()
-    #
-    # #Allocating new ip address to instance
-    # vpnObj.associateNewAddress()
+    vpnObj.disassociateAddress()
 
-    #
-    # print 'OldEndpoint in preferences.plist file: ' + oldEndpoint
-    # print 'Current Public IP Address associated with VM: ' + publicIPAddress
-    # print 'New public IP address: ' + str(newPublicIP)
-
-    # print 'Unassociating public ip address'
-    # vpnObj.disassociateAddress()
-
-    #Changing public ip address that the vpn is connecting to
-    # os.system('sed -i -e \'s/' + oldEndpointAddress + '/' + publicIPAddress + '/g\' /Library/Preferences/SystemConfiguration/preferences.plist')
-    # print 'vpn endpoint changed'
-
-
-
-
-
-    # main()
+    #Associating new ip address to the instance.
+    vpnObj.associateNewAddress()
