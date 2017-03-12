@@ -7,8 +7,8 @@ import ConfigParser
 #Need to allocate elastic IP address. - Done
 #Once address is allocated, go into the vm that is spun up and change the configuration in openswan
 #to accomodate the new elastic ip address.
-#Unassociate address
-#Associate new address
+#Unassociate address - Done
+#Associate new address - Done
 #Go into vm, restart the openswan service.
 
 # def main():
