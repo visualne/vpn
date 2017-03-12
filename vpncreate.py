@@ -3,6 +3,13 @@ from boto import ec2
 import os
 import re
 import ConfigParser
+import ansible.runner
+import ansible.playbook
+import ansible.inventory
+from ansible import callbacks
+from ansible import utils
+import json
+
 
 #Need to allocate elastic IP address. - Done
 #Once address is allocated, go into the vm that is spun up and change the configuration in openswan
@@ -10,6 +17,34 @@ import ConfigParser
 #Unassociate address - Done
 #Associate new address - Done
 #Go into vm, restart the openswan service.
+
+class vpnVMInteraction(object):
+
+    def __init__(self):
+        #Setting up the old and new public ip addresses that will be used a vpn endpoint.
+        self.oldIP = '34.206.115.14'
+        self.newIP = '5.5.5.5'
+
+        self.hosts = [self.oldIP]
+        self.vpn_vm = ansible.inventory.Inventory(self.hosts)
+
+
+    def runCommand(self,cmd):
+        '''This function runs the command that was sent into the function.'''
+        pm = ansible.runner.Runner(
+            module_name = 'command',
+            module_args = cmd,
+            timeout = 5,
+            inventory = self.vpn_vm,
+            subset = 'all',
+            remote_user='ubuntu',
+            become='yes',
+            become_method='sudo'
+            )
+
+        out = pm.run()
+
+        print json.dumps(out, sort_keys=True, indent=4, separators=(',', ': '))
 
 # def main():
 class vpn(object):
@@ -89,16 +124,20 @@ class vpn(object):
         '''This method will change'''
 
 if __name__ == "__main__":
+    newVpnObj = vpnVMInteraction()
+    newVpnObj.runCommand('sed -i \'s/^  leftid=.*/  leftid=10.10.10.10/g\' /etc/ipsec.conf')
+    newVpnObj.runCommand('sed -i -e \'s/1.1.1.1\\b/3.3.3.3/g\' /etc/ipsec.secrets')
+
+
+
     #Creating new vpn object.
-    vpnObj = vpn()
-
-    #Disassociating the public ip address associated with an instance.
-    vpnObj.disassociateAddress()
-
-    #Allocating new ip address to instance
-    vpnObj.associateNewAddress()
-
-
+    # vpnObj = vpn()
+    #
+    # #Disassociating the public ip address associated with an instance.
+    # vpnObj.disassociateAddress()
+    #
+    # #Allocating new ip address to instance
+    # vpnObj.associateNewAddress()
 
     #
     # print 'OldEndpoint in preferences.plist file: ' + oldEndpoint
