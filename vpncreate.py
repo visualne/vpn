@@ -9,6 +9,7 @@ import ansible.inventory
 from ansible import callbacks
 from ansible import utils
 import json
+import time
 
 
 #Problem UDP port 500 not listening after openswan restart for some reason. Need to look into this more.
@@ -30,6 +31,7 @@ class vpnVMInteraction(object):
 
     def runCommand(self,cmd):
         '''This function runs the command that was sent into the function.'''
+
         pm = ansible.runner.Runner(
             module_name = 'command',
             module_args = cmd,
@@ -138,19 +140,27 @@ if __name__ == "__main__":
     #Sed command to replace public ip in /etc/ipsec.secrets
     print 'sed -i -e \'s/%s\\b/%s/g\' /etc/ipsec.secrets' % (newIPAddress.public_ip,oldIPAddress)
 
-    newVpnObj = vpnVMInteraction(oldIPAddress)
+    vmInterationObj = vpnVMInteraction(oldIPAddress)
 
     #Replacing old public ip address in /etc/ipsec.conf
-    newVpnObj.runCommand('sed -i \'s/^  leftid=.*/  leftid=%s/g\' /etc/ipsec.conf' %newIPAddress.public_ip)
+    vmInterationObj.runCommand('sed -i \'s/^  leftid=.*/  leftid=%s/g\' /etc/ipsec.conf' %newIPAddress.public_ip)
 
     #replacing old ip adddress with new ip address in /etc/ipsec.secrets
-    newVpnObj.runCommand('sed -i -e \'s/%s\\b/%s/g\' /etc/ipsec.secrets' % (oldIPAddress,newIPAddress.public_ip))
+    vmInterationObj.runCommand('sed -i -e \'s/%s\\b/%s/g\' /etc/ipsec.secrets' % (oldIPAddress,newIPAddress.public_ip))
 
-    #restarting openswan
-    newVpnObj.runCommand('service ipsec restart')
+    #Sleeping for a few seconds before restarting.
+    # time.sleep(10)
 
     # #Disassociating the public ip address associated with an instance.
     vpnObj.disassociateAddress()
 
     #Associating new ip address to the instance.
     vpnObj.associateNewAddress()
+
+    #Sleeping for a few
+    time.sleep(45)
+
+    #Restarting ipsec service now that the new public ip is assigned to it.
+    newVmInteractionObj = vpnVMInteraction(newIPAddress.public_ip)
+
+    newVmInteractionObj.runCommand('reboot')
