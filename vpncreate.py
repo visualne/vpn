@@ -10,6 +10,7 @@ from ansible import callbacks
 from ansible import utils
 import json
 import time
+from subprocess import call
 
 
 #Problem UDP port 500 not listening after openswan restart for some reason. Need to look into this more.
